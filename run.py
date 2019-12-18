@@ -4,7 +4,7 @@ import threading
 import time
 import gi
 gi.require_version('Gtk', '3.0')
-from gi.repository import GLib, Gtk, Pango
+from gi.repository import GLib, Gio, Gtk, Pango
 
 
 class State:
@@ -14,9 +14,10 @@ class State:
         self.is_filtered_by_user = True
 
 
-def create_window():
+def create_window(app: Gtk.Application):
     state = State()
-    window = Gtk.Window(title="Nihao | 你好")
+    window = Gtk.ApplicationWindow(application=app, title="Nihao | 你好")
+    window.insert_action_group("app", app)
 
     window.set_default_size(640, 640)
     window.set_position(Gtk.WindowPosition.CENTER)
@@ -29,9 +30,8 @@ def create_window():
 
     window.add(layout)
     window.show_all()
-    window.connect("destroy", Gtk.main_quit)
 
-    def update_jobs(jobs_list):
+    def update_jobs(jobs_list=None):
         print('Updating jobs')
         jobs_view.update(jobs_list)
 
@@ -39,7 +39,13 @@ def create_window():
         while True:
             jobs_list = state.k8s.get_jobs_info()
             GLib.idle_add(update_jobs, jobs_list)
-            time.sleep(1.0)
+            time.sleep(5.0)
+
+    update_jobs_action = Gio.SimpleAction.new("update_jobs", None)
+    update_jobs_action.connect("activate", lambda obj, action: update_jobs())
+
+    app.add_action(update_jobs_action)
+    app.set_accels_for_action("app.update_jobs", ["<Control>r"])
 
     thread = threading.Thread(target=update_jobs_task)
     thread.daemon = True
@@ -127,9 +133,32 @@ def create_layout(jobs_view: JobsView, user_filter_checkbox: Gtk.CheckButton):
     return grid
 
 
+class Application(Gtk.Application):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, application_id="com.tcl.nihao", **kwargs)
+        self.window = None
+
+    def do_startup(self):
+        Gtk.Application.do_startup(self)
+
+        self.window = create_window(self)
+        self.add_window(self.window)
+
+    def do_activate(self):
+        if not self.window:
+            self.window = create_window(self)
+            self.add_window(self.window)
+
+        self.window.present()
+
+    def on_quit(self, action, param):
+        self.quit()
+
+
 def main():
-    _ = create_window()
-    Gtk.main()
+    app = Application()
+    app.run()
 
 
 if __name__ == '__main__':

@@ -1,4 +1,19 @@
-from gi.repository import Gtk, Pango
+import threading
+import time
+
+from gi.repository import GLib, Gio, Gtk, Pango
+import logging
+
+from nihao.k8s import K8s
+
+
+log = logging.getLogger(__name__)
+
+
+def action_handler(fn):
+    def handler(_action, _params):
+        return fn()
+    return handler
 
 
 class JobsView(Gtk.Bin):
@@ -29,6 +44,7 @@ class JobsView(Gtk.Bin):
             tree_view.append_column(column)
 
     def update(self, jobs_list: list = None):
+        log.info("Updating jobs list...")
         if jobs_list is not None:
             jobs_dict = {j.name: j for j in jobs_list}
 
@@ -46,3 +62,23 @@ class JobsView(Gtk.Bin):
 
     def add_filter(self, filter_):
         self.filters.append(filter_)
+
+    def setup_update_actions(self, k8s: K8s, action_group: Gio.SimpleActionGroup):
+        def update_jobs():
+            def fn():
+                jobs_list = k8s.get_jobs_info()
+                GLib.idle_add(lambda: self.update(jobs_list))
+
+            threading.Thread(target=fn, daemon=True).start()
+
+        def update_jobs_periodic_task():
+            while True:
+                jobs_list = k8s.get_jobs_info()
+                GLib.idle_add(lambda: self.update(jobs_list))
+                time.sleep(5.0)
+
+        update_jobs_action = Gio.SimpleAction.new("update", None)
+        update_jobs_action.connect("activate", action_handler(update_jobs))
+
+        action_group.add_action(update_jobs_action)
+        threading.Thread(target=update_jobs_periodic_task, daemon=True).start()

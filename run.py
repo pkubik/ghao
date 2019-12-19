@@ -1,3 +1,6 @@
+import logging
+import os
+
 from nihao.k8s import K8s
 
 import threading
@@ -7,11 +10,7 @@ gi.require_version('Gtk', '3.0')
 from gi.repository import GLib, Gio, Gtk
 from jobs_view import JobsView
 
-
-def action_handler(fn):
-    def handler(_action, _params):
-        return fn()
-    return handler
+logging.basicConfig(level=os.environ.get("NIHAO_LOGLEVEL", "INFO"))
 
 
 class State:
@@ -34,29 +33,10 @@ def create_window():
     user_filter_checkbox = create_user_filter_checkbox(state, jobs_view)
     layout = create_layout(jobs_view, user_filter_checkbox)
 
-    jobs_view.update()
+    jobs_view.setup_update_actions(state.k8s, action_group)
 
     window.add(layout)
     window.show_all()
-
-    def update_jobs(jobs_list=None):
-        print('Updating jobs')
-        jobs_view.update(jobs_list)
-
-    def update_jobs_task():
-        while True:
-            jobs_list = state.k8s.get_jobs_info()
-            GLib.idle_add(update_jobs, jobs_list)
-            time.sleep(5.0)
-
-    update_jobs_action = Gio.SimpleAction.new("update", None)
-    update_jobs_action.connect("activate", action_handler(update_jobs))
-
-    action_group.add_action(update_jobs_action)
-
-    thread = threading.Thread(target=update_jobs_task)
-    thread.daemon = True
-    thread.start()
 
     return window
 

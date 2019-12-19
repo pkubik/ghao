@@ -60,8 +60,9 @@ def create_window():
     return window
 
 
-class JobsView(Gtk.TreeView):
+class JobsView(Gtk.Bin):
     def __init__(self):
+        super().__init__()
         self.filters = []
 
         self.list_store = Gtk.ListStore(str, str, str, str)
@@ -71,7 +72,8 @@ class JobsView(Gtk.TreeView):
 
         self.job_filter = self.list_store.filter_new()
         self.job_filter.set_visible_func(is_job_visible)
-        super().__init__(model=Gtk.TreeModelSort(model=self.job_filter))
+        tree_view = Gtk.TreeView(model=Gtk.TreeModelSort(model=self.job_filter))
+        self.add(tree_view)
         for i, column_title in enumerate(["Priority", "Name", "State", "Node"]):
             renderer = Gtk.CellRendererText(single_paragraph_mode=True,
                                             ellipsize=Pango.EllipsizeMode.START,
@@ -83,7 +85,7 @@ class JobsView(Gtk.TreeView):
                 column.set_min_width(320)
             else:
                 column.set_min_width(80)
-            self.append_column(column)
+            tree_view.append_column(column)
 
     def update(self, jobs_list: list = None):
         if jobs_list is not None:

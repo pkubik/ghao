@@ -7,6 +7,12 @@ gi.require_version('Gtk', '3.0')
 from gi.repository import GLib, Gio, Gtk, Pango
 
 
+def action_handler(fn):
+    def handler(_action, _params):
+        return fn()
+    return handler
+
+
 class State:
     def __init__(self):
         self.k8s = K8s()
@@ -43,7 +49,7 @@ def create_window():
             time.sleep(5.0)
 
     update_jobs_action = Gio.SimpleAction.new("update", None)
-    update_jobs_action.connect("activate", lambda obj, action: update_jobs())
+    update_jobs_action.connect("activate", action_handler(update_jobs))
 
     action_group.add_action(update_jobs_action)
 

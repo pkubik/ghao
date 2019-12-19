@@ -14,10 +14,11 @@ class State:
         self.is_filtered_by_user = True
 
 
-def create_window(app: Gtk.Application):
+def create_window():
     state = State()
-    window = Gtk.ApplicationWindow(application=app, title="Nihao | 你好")
-    window.insert_action_group("app", app)
+    window = Gtk.ApplicationWindow(title="Nihao | 你好")
+    action_group = Gio.SimpleActionGroup()
+    window.insert_action_group("jobs", action_group)
 
     window.set_default_size(640, 640)
     window.set_position(Gtk.WindowPosition.CENTER)
@@ -41,11 +42,10 @@ def create_window(app: Gtk.Application):
             GLib.idle_add(update_jobs, jobs_list)
             time.sleep(5.0)
 
-    update_jobs_action = Gio.SimpleAction.new("update_jobs", None)
+    update_jobs_action = Gio.SimpleAction.new("update", None)
     update_jobs_action.connect("activate", lambda obj, action: update_jobs())
 
-    app.add_action(update_jobs_action)
-    app.set_accels_for_action("app.update_jobs", ["<Control>r"])
+    action_group.add_action(update_jobs_action)
 
     thread = threading.Thread(target=update_jobs_task)
     thread.daemon = True
@@ -139,16 +139,20 @@ class Application(Gtk.Application):
         super().__init__(*args, application_id="com.tcl.nihao", **kwargs)
         self.window = None
 
+    def _create_window(self):
+        self.window = create_window()
+        self.add_window(self.window)
+
+        self.set_accels_for_action("jobs.update", ["<Control>r"])
+
     def do_startup(self):
         Gtk.Application.do_startup(self)
 
-        self.window = create_window(self)
-        self.add_window(self.window)
+        self._create_window()
 
     def do_activate(self):
         if not self.window:
-            self.window = create_window(self)
-            self.add_window(self.window)
+            self._create_window()
 
         self.window.present()
 

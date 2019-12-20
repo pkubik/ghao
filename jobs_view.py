@@ -58,7 +58,7 @@ class JobsView(Gtk.Bin):
 
         job_filter.refresh_fns.append(self.update)
 
-        tree_view = Gtk.TreeView(model=Gtk.TreeModelSort(model=self.store_filter))
+        self.tree_view = Gtk.TreeView(model=Gtk.TreeModelSort(model=self.store_filter))
         for i, column_title in enumerate(["Priority", "Name", "State", "Node"]):
             renderer = Gtk.CellRendererText(single_paragraph_mode=True,
                                             ellipsize=Pango.EllipsizeMode.START,
@@ -70,11 +70,11 @@ class JobsView(Gtk.Bin):
                 column.set_min_width(320)
             else:
                 column.set_min_width(80)
-            tree_view.append_column(column)
+            self.tree_view.append_column(column)
 
         scroll_area = Gtk.ScrolledWindow()
         scroll_area.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-        scroll_area.add(tree_view)
+        scroll_area.add(self.tree_view)
         self.add(scroll_area)
 
     def update(self, jobs_list: list = None):
@@ -95,6 +95,9 @@ class JobsView(Gtk.Bin):
             log.info("Refreshing jobs list...")
 
         self.store_filter.refilter()
+
+        if len(self.list_store) > 0 and self.tree_view.get_selection().count_selected_rows() == 0:
+            self.tree_view.get_selection().select_path(0)
 
     def setup_update_actions(self, k8s: K8s, action_group: Gio.SimpleActionGroup):
         def update_jobs():

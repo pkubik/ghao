@@ -30,6 +30,7 @@ def create_window():
 
     jobs_view = JobsView(header.job_filter)
     window.add(jobs_view)
+    jobs_view.grab_focus()
     jobs_view.setup_update_actions(k8s, action_group)
 
     window.show_all()

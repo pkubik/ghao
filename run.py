@@ -13,15 +13,10 @@ from jobs_view import JobsView
 logging.basicConfig(level=os.environ.get("NIHAO_LOGLEVEL", "INFO"))
 
 
-class State:
-    def __init__(self):
-        self.k8s = K8s()
-        self.username = 'maciek'
-        self.is_filtered_by_user = True
-
-
 def create_window():
-    state = State()
+    username = 'maciek'
+    k8s = K8s()
+
     title = "Nihao | 你好"
     window = Gtk.ApplicationWindow(title=title)
     action_group = Gio.SimpleActionGroup()
@@ -30,13 +25,12 @@ def create_window():
     window.set_default_size(640, 640)
     window.set_position(Gtk.WindowPosition.CENTER)
 
-    jobs_view = JobsView()
-    window.add(jobs_view)
-
-    header = HeaderBar(title, state.username, jobs_view)
+    header = HeaderBar(title, username)
     window.set_titlebar(header)
 
-    jobs_view.setup_update_actions(state.k8s, action_group)
+    jobs_view = JobsView(header.job_filter)
+    window.add(jobs_view)
+    jobs_view.setup_update_actions(k8s, action_group)
 
     window.show_all()
 

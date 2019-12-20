@@ -1,20 +1,18 @@
 from gi.repository import Gtk
 
-from jobs_view import JobsView
+from jobs_view import JobFilter
 
 
-def create_user_filter_checkbox(username: str, jobs_view: JobsView) -> Gtk.CheckButton:
-    # Filter object should be probably separated from the filter checkbox
-
+def create_user_filter_checkbox(username: str, job_filter: JobFilter) -> Gtk.CheckButton:
     checkbox = Gtk.CheckButton(label="Filter by user")
 
-    def checkbox_toggled(_widget):
-        jobs_view.update()
-
     def filter_job(fields):
-        return not checkbox.get_active() or username in fields[1]
+        return not checkbox.get_active() or username in fields.name
 
-    jobs_view.add_filter(filter_job)
+    job_filter.add_predicate(filter_job)
+
+    def checkbox_toggled(_widget):
+        job_filter.refresh()
 
     checkbox.connect("toggled", checkbox_toggled)
     checkbox.set_active(True)
@@ -23,34 +21,36 @@ def create_user_filter_checkbox(username: str, jobs_view: JobsView) -> Gtk.Check
 
 
 class SearchBox(Gtk.Entry):
-    def __init__(self, jobs_view: JobsView):
+    def __init__(self, job_filter: JobFilter):
         super().__init__(expand=True)
         self.set_placeholder_text("<Ctrl> + F")
 
-        def text_changed(_widget):
-            jobs_view.update()
-
         def filter_job(fields):
             words = self.get_text().split()
-            return all(word in fields[1] for word in words)
+            return all(word in fields.name for word in words)
+
+        job_filter.add_predicate(filter_job)
+
+        def text_changed(_widget):
+            job_filter.refresh()
 
         self.connect("changed", text_changed)
-        jobs_view.add_filter(filter_job)
 
 
 class HeaderBar(Gtk.HeaderBar):
-    def __init__(self, title: str, username: str, jobs_view: JobsView):
+    def __init__(self, title: str, username: str):
         super().__init__()
         self.set_show_close_button(True)
         self.set_vexpand(True)
 
+        self.job_filter = JobFilter()
+
         title_text = Gtk.Label()
         title_text.set_markup(f'   <b>{title}</b>   ')
-        entry = SearchBox(jobs_view)
+        entry = SearchBox(self.job_filter)
         self.set_custom_title(entry)
 
         self.pack_start(title_text)
 
-        # Note: dependency on JobsView is quite ridiculous and should be removed in the future
-        checkbox = create_user_filter_checkbox(username, jobs_view)
+        checkbox = create_user_filter_checkbox(username, self.job_filter)
         self.pack_end(checkbox)

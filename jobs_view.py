@@ -44,8 +44,8 @@ class JobsView(Gtk.Bin):
             tree_view.append_column(column)
 
     def update(self, jobs_list: list = None):
-        log.info("Updating jobs list...")
         if jobs_list is not None:
+            log.info("Updating jobs list...")
             jobs_dict = {j.name: j for j in jobs_list}
 
             for it in self.list_store:
@@ -57,6 +57,8 @@ class JobsView(Gtk.Bin):
 
             for job in jobs_dict.values():
                 self.list_store.append([job.priority, job.name, job.phase, job.node])
+        else:
+            log.info("Refreshing jobs list...")
 
         self.job_filter.refilter()
 

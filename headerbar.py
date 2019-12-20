@@ -22,6 +22,22 @@ def create_user_filter_checkbox(username: str, jobs_view: JobsView) -> Gtk.Check
     return checkbox
 
 
+class SearchBox(Gtk.Entry):
+    def __init__(self, jobs_view: JobsView):
+        super().__init__(expand=True)
+        self.set_placeholder_text("<Ctrl> + F")
+
+        def text_changed(_widget):
+            jobs_view.update()
+
+        def filter_job(fields):
+            words = self.get_text().split()
+            return all(word in fields[1] for word in words)
+
+        self.connect("changed", text_changed)
+        jobs_view.add_filter(filter_job)
+
+
 class HeaderBar(Gtk.HeaderBar):
     def __init__(self, title: str, username: str, jobs_view: JobsView):
         super().__init__()
@@ -30,8 +46,7 @@ class HeaderBar(Gtk.HeaderBar):
 
         title_text = Gtk.Label()
         title_text.set_markup(f'   <b>{title}</b>   ')
-        entry = Gtk.Entry(expand=True)
-        entry.set_placeholder_text("<Ctrl> + F")
+        entry = SearchBox(jobs_view)
         self.set_custom_title(entry)
 
         self.pack_start(title_text)

@@ -8,6 +8,7 @@ import logging
 
 from nihao.k8s import K8s
 
+from utils import action_handler
 
 log = logging.getLogger(__name__)
 
@@ -34,12 +35,6 @@ class JobFilter:
 
     def add_predicate(self, fn: Callable):
         self.visible_fns.append(fn)
-
-
-def action_handler(fn):
-    def handler(_action, _params):
-        return fn()
-    return handler
 
 
 class JobsView(Gtk.Bin):

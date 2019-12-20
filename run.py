@@ -27,6 +27,7 @@ def create_window():
 
     header = HeaderBar(title, username)
     window.set_titlebar(header)
+    header.setup_actions(action_group)
 
     jobs_view = JobsView(header.job_filter)
     window.add(jobs_view)
@@ -49,6 +50,7 @@ class Application(Gtk.Application):
         self.add_window(self.window)
 
         self.set_accels_for_action("jobs.update", ["<Control>r"])
+        self.set_accels_for_action("jobs.search", ["<Control>f"])
 
     def do_startup(self):
         Gtk.Application.do_startup(self)

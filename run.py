@@ -31,8 +31,7 @@ def create_window():
     window.set_position(Gtk.WindowPosition.CENTER)
 
     jobs_view = JobsView()
-    layout = create_main_layout(jobs_view)
-    window.add(layout)
+    window.add(jobs_view)
 
     header = HeaderBar(title, state.username, jobs_view)
     window.set_titlebar(header)
@@ -42,15 +41,6 @@ def create_window():
     window.show_all()
 
     return window
-
-
-def create_main_layout(jobs_view: JobsView):
-    scroll_area = Gtk.ScrolledWindow()
-    scroll_area.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-    scroll_area.set_vexpand(True)
-    scroll_area.add(jobs_view)
-
-    return scroll_area
 
 
 class Application(Gtk.Application):

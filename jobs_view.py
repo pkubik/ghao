@@ -72,6 +72,9 @@ class JobsView(Gtk.Bin):
         scroll_area.add(self.tree_view)
         self.add(scroll_area)
 
+    def grab_focus(self):
+        self.tree_view.grab_focus()
+
     def update(self, jobs_list: list = None):
         if jobs_list is not None:
             log.info("Updating jobs list...")

@@ -1,4 +1,7 @@
 import gi
+
+from utils import action_handler
+
 gi.require_version('Gtk', '3.0')
 
 import logging
@@ -34,6 +37,10 @@ def create_window():
     jobs_view.grab_focus()
     jobs_view.setup_update_actions(k8s, action_group)
 
+    focus_jobs_action = Gio.SimpleAction.new("focus", None)
+    focus_jobs_action.connect("activate", action_handler(jobs_view.grab_focus))
+    action_group.add_action(focus_jobs_action)
+
     window.show_all()
 
     return window
@@ -51,6 +58,7 @@ class Application(Gtk.Application):
 
         self.set_accels_for_action("jobs.update", ["<Control>r"])
         self.set_accels_for_action("jobs.search", ["<Control>f"])
+        self.set_accels_for_action("jobs.focus", ["Escape"])
 
     def do_startup(self):
         Gtk.Application.do_startup(self)

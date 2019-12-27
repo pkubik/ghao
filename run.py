@@ -1,8 +1,7 @@
 import gi
+gi.require_version('Gtk', '3.0')
 
 from utils import action_handler
-
-gi.require_version('Gtk', '3.0')
 
 import logging
 import os
@@ -14,6 +13,30 @@ from gi.repository import Gio, Gtk
 from jobs_view import JobsView
 
 logging.basicConfig(level=os.environ.get("NIHAO_LOGLEVEL", "INFO"))
+log = logging.getLogger(__name__)
+
+
+MENU_XML = """
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <menu id="job-menu">
+    <section>
+        <item>
+            <attribute name="label">Describe</attribute>
+            <attribute name="action">jobs.describe</attribute>
+        </item>
+        <item>
+            <attribute name="label">Copy dir</attribute>
+            <attribute name="action">jobs.yank</attribute>
+        </item>
+        <item>
+            <attribute name="label">Kill</attribute>
+            <attribute name="action">jobs.kill</attribute>
+        </item>
+    </section>
+  </menu>
+</interface>
+"""
 
 
 def create_window():
@@ -41,9 +64,45 @@ def create_window():
     focus_jobs_action.connect("activate", action_handler(jobs_view.grab_focus))
     action_group.add_action(focus_jobs_action)
 
+    setup_popover_menu(jobs_view)
+
+    def describe_job():
+        log.info(f"Describing jobs: {jobs_view.selected_jobs()}")
+
+    describe_action = Gio.SimpleAction.new("describe", None)
+    describe_action.connect("activate", action_handler(describe_job))
+    action_group.add_action(describe_action)
+
+    def yank_job():
+        log.info(f"Copying directory of jobs: {jobs_view.selected_jobs()}")
+
+    yank_action = Gio.SimpleAction.new("yank", None)
+    yank_action.connect("activate", action_handler(yank_job))
+    action_group.add_action(yank_action)
+
+    def kill_job():
+        log.info(f"Killing jobs: {jobs_view.selected_jobs()}")
+
+    kill_action = Gio.SimpleAction.new("kill", None)
+    kill_action.connect("activate", action_handler(kill_job))
+    action_group.add_action(kill_action)
+
     window.show_all()
 
     return window
+
+
+def setup_popover_menu(jobs_view: JobsView):
+    builder = Gtk.Builder.new_from_string(MENU_XML, -1)
+    menu = builder.get_object("job-menu")
+    popover = Gtk.Popover.new_from_model(jobs_view, menu)
+    popover.set_modal(True)
+
+    def popup_right_click_menu(clicked_rect):
+        popover.set_pointing_to(clicked_rect)
+        popover.popup()
+
+    jobs_view.add_right_click_handler(popup_right_click_menu)
 
 
 class Application(Gtk.Application):
@@ -58,6 +117,9 @@ class Application(Gtk.Application):
 
         self.set_accels_for_action("jobs.update", ["<Control>r"])
         self.set_accels_for_action("jobs.search", ["<Control>f"])
+        self.set_accels_for_action("jobs.describe", ["<Control>s"])
+        self.set_accels_for_action("jobs.yank", ["<Control>y"])
+        self.set_accels_for_action("jobs.kill", ["<Control>k"])
         self.set_accels_for_action("jobs.focus", ["Escape"])
 
     def do_startup(self):

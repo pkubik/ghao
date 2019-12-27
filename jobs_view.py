@@ -1,9 +1,9 @@
 import threading
 import time
 from dataclasses import dataclass
-from typing import Callable
+from typing import Callable, List
 
-from gi.repository import GLib, Gio, Gtk, Pango
+from gi.repository import GLib, Gio, Gtk, Gdk, Pango
 import logging
 
 from nihao.k8s import K8s
@@ -116,3 +116,18 @@ class JobsView(Gtk.Bin):
 
         action_group.add_action(update_jobs_action)
         threading.Thread(target=update_jobs_periodic_task, daemon=True).start()
+
+    def add_right_click_handler(self, fn):
+        def handler(_view, event):
+            if event.type == Gdk.EventType.BUTTON_RELEASE and event.button == 3:
+                click_location = Gdk.Rectangle()
+                click_location.x = event.x
+                click_location.y = event.y + 24  # need some offset because the coordinates are shifted, dunno
+                fn(click_location)
+
+        self.tree_view.connect('button-release-event', handler)
+
+    def selected_jobs(self) -> List[Job]:
+        selection = self.tree_view.get_selection()
+        model, path_list = selection.get_selected_rows()
+        return [Job(*model[model.get_iter(path)]) for path in path_list]

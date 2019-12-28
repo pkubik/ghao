@@ -3,12 +3,10 @@ import time
 from dataclasses import dataclass
 from typing import Callable, List
 
-from gi.repository import GLib, Gio, Gtk, Gdk, Pango
+from gi.repository import Gtk, Gdk, Pango
 import logging
 
-from nihao.k8s import K8s
-
-from utils import action_handler
+from nihao import k8s
 
 log = logging.getLogger(__name__)
 
@@ -75,7 +73,7 @@ class JobsView(Gtk.Bin):
     def grab_focus(self):
         self.tree_view.grab_focus()
 
-    def update(self, jobs_list: list = None):
+    def update(self, jobs_list: List[k8s.Job] = None):
         if jobs_list is not None:
             log.info("Updating jobs list...")
             jobs_dict = {j.name: j for j in jobs_list}
@@ -96,26 +94,6 @@ class JobsView(Gtk.Bin):
 
         if len(self.list_store) > 0 and self.tree_view.get_selection().count_selected_rows() == 0:
             self.tree_view.get_selection().select_path(0)
-
-    def setup_update_actions(self, k8s: K8s, action_group: Gio.SimpleActionGroup):
-        def update_jobs():
-            def fn():
-                jobs_list = k8s.get_jobs_info()
-                GLib.idle_add(lambda: self.update(jobs_list))
-
-            threading.Thread(target=fn, daemon=True).start()
-
-        def update_jobs_periodic_task():
-            while True:
-                jobs_list = k8s.get_jobs_info()
-                GLib.idle_add(lambda: self.update(jobs_list))
-                time.sleep(8.)
-
-        update_jobs_action = Gio.SimpleAction.new("update", None)
-        update_jobs_action.connect("activate", action_handler(update_jobs))
-
-        action_group.add_action(update_jobs_action)
-        threading.Thread(target=update_jobs_periodic_task, daemon=True).start()
 
     def add_right_click_handler(self, fn):
         def handler(_view, event):

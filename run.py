@@ -1,13 +1,14 @@
 import gi
 gi.require_version('Gtk', '3.0')
 
-from utils import action_handler
+from utils import action_handler, threaded_action_handler
 
 import logging
 import os
 
+from kubectl import KubeCtl, describe_jobs, yank_jobs, kill_jobs
+
 from headerbar import HeaderBar
-from nihao.k8s import K8s
 
 from gi.repository import Gio, Gtk
 from jobs_view import JobsView
@@ -26,7 +27,7 @@ MENU_XML = """
             <attribute name="action">jobs.describe</attribute>
         </item>
         <item>
-            <attribute name="label">Copy dir</attribute>
+            <attribute name="label">Copy path</attribute>
             <attribute name="action">jobs.yank</attribute>
         </item>
         <item>
@@ -41,7 +42,7 @@ MENU_XML = """
 
 def create_window():
     username = 'maciek'
-    k8s = K8s()
+    kubectl = KubeCtl()
 
     title = "Nihao | 你好"
     window = Gtk.ApplicationWindow(title=title)
@@ -58,7 +59,7 @@ def create_window():
     jobs_view = JobsView(header.job_filter)
     window.add(jobs_view)
     jobs_view.grab_focus()
-    jobs_view.setup_update_actions(k8s, action_group)
+    kubectl.setup_update_actions(jobs_view, action_group)
 
     focus_jobs_action = Gio.SimpleAction.new("focus", None)
     focus_jobs_action.connect("activate", action_handler(jobs_view.grab_focus))
@@ -66,26 +67,20 @@ def create_window():
 
     setup_popover_menu(jobs_view)
 
-    def describe_job():
-        log.info(f"Describing jobs: {jobs_view.selected_jobs()}")
+    def add_simple_jobs_action(name, actual_fn):
+        def fn():
+            log.info(f"Performing action `{name}`...")
+            jobs = jobs_view.selected_jobs()
+            actual_fn([job.name for job in jobs])
+            kubectl.update_jobs_view(jobs_view)
 
-    describe_action = Gio.SimpleAction.new("describe", None)
-    describe_action.connect("activate", action_handler(describe_job))
-    action_group.add_action(describe_action)
+        action = Gio.SimpleAction.new(name, None)
+        action.connect("activate", threaded_action_handler(fn))
+        action_group.add_action(action)
 
-    def yank_job():
-        log.info(f"Copying directory of jobs: {jobs_view.selected_jobs()}")
-
-    yank_action = Gio.SimpleAction.new("yank", None)
-    yank_action.connect("activate", action_handler(yank_job))
-    action_group.add_action(yank_action)
-
-    def kill_job():
-        log.info(f"Killing jobs: {jobs_view.selected_jobs()}")
-
-    kill_action = Gio.SimpleAction.new("kill", None)
-    kill_action.connect("activate", action_handler(kill_job))
-    action_group.add_action(kill_action)
+    add_simple_jobs_action('describe', describe_jobs)
+    add_simple_jobs_action('yank', yank_jobs)
+    add_simple_jobs_action('kill', kill_jobs)
 
     window.show_all()
 

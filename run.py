@@ -1,4 +1,7 @@
 import gi
+
+from errors import GhaoRuntimeError
+
 gi.require_version('Gtk', '3.0')
 
 from utils import action_handler, threaded_action_handler
@@ -10,7 +13,7 @@ from kubectl import KubeCtl, describe_jobs, yank_jobs, kill_jobs
 
 from headerbar import HeaderBar
 
-from gi.repository import Gio, Gtk
+from gi.repository import Gio, Gtk, GLib
 from jobs_view import JobsView
 
 logging.basicConfig(level=os.environ.get("NIHAO_LOGLEVEL", "INFO"))
@@ -29,6 +32,10 @@ MENU_XML = """
         <item>
             <attribute name="label">Copy path</attribute>
             <attribute name="action">jobs.yank</attribute>
+        </item>
+        <item>
+            <attribute name="label">Open dir</attribute>
+            <attribute name="action">jobs.open</attribute>
         </item>
         <item>
             <attribute name="label">Kill</attribute>
@@ -68,10 +75,23 @@ def create_window():
     setup_popover_menu(jobs_view)
 
     def add_simple_jobs_action(name, actual_fn):
+        def error_box(markup: str):
+            dialog = Gtk.MessageDialog(parent=window,
+                                       message_type=Gtk.MessageType.INFO,
+                                       buttons=Gtk.ButtonsType.OK)
+            dialog.set_markup("<b>Action Error</b>")
+            dialog.format_secondary_markup(markup)
+            dialog.run()
+            dialog.destroy()
+
         def fn():
             log.info(f"Performing action `{name}`...")
             jobs = jobs_view.selected_jobs()
-            actual_fn([job.name for job in jobs])
+            try:
+                actual_fn([job.name for job in jobs])
+            except GhaoRuntimeError as e:
+                GLib.idle_add(error_box, str(e))
+
             kubectl.update_jobs_view(jobs_view)
 
         action = Gio.SimpleAction.new(name, None)
@@ -80,6 +100,7 @@ def create_window():
 
     add_simple_jobs_action('describe', describe_jobs)
     add_simple_jobs_action('yank', yank_jobs)
+    add_simple_jobs_action('open', kubectl.open_file_browsers)
     add_simple_jobs_action('kill', kill_jobs)
 
     window.show_all()
@@ -114,6 +135,7 @@ class Application(Gtk.Application):
         self.set_accels_for_action("jobs.search", ["<Control>f"])
         self.set_accels_for_action("jobs.describe", ["<Control>s"])
         self.set_accels_for_action("jobs.yank", ["<Control>y"])
+        self.set_accels_for_action("jobs.open", ["<Control>o"])
         self.set_accels_for_action("jobs.kill", ["<Control>k"])
         self.set_accels_for_action("jobs.focus", ["Escape"])
 

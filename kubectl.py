@@ -10,6 +10,7 @@ from typing import List
 
 import plumbum as pb
 
+from errors import GhaoRuntimeError
 from jobs_view import JobsView
 from nihao.k8s import K8s
 
@@ -28,7 +29,7 @@ def get_command_base(name: str):
     except pb.CommandNotFound as e:
         log.error(f"{e.program} was not found.\n"
                   "Make sure that it's installed before using this tool.")
-        raise SystemError(f"Command `{name}` not found.")
+        raise GhaoRuntimeError(f"Command `{name}` not found.")
 
 
 class KubeCtl:
@@ -38,7 +39,7 @@ class KubeCtl:
 
     def update_jobs_view(self, jobs_view: JobsView):
         def fn():
-            self._jobs_cache = self.k8s.get_jobs_info()
+            self._jobs_cache = self.k8s.get_jobs_info(jobdir=True)
             GLib.idle_add(lambda: jobs_view.update(self._jobs_cache))
 
         threading.Thread(target=fn, daemon=True).start()
@@ -46,7 +47,7 @@ class KubeCtl:
     def setup_update_actions(self, jobs_view: JobsView, action_group: Gio.SimpleActionGroup):
         def update_jobs_periodic_task():
             while True:
-                self._jobs_cache = self.k8s.get_jobs_info()
+                self._jobs_cache = self.k8s.get_jobs_info(jobdir=True)
                 GLib.idle_add(lambda: jobs_view.update(self._jobs_cache))
                 time.sleep(8.)
 
@@ -55,6 +56,24 @@ class KubeCtl:
 
         action_group.add_action(update_jobs_action)
         threading.Thread(target=update_jobs_periodic_task, daemon=True).start()
+
+    def open_file_browsers(self, names: List[str]):
+        items = [item for item in self._jobs_cache if item.name in names]
+        jobs_without_dir = []
+
+        for item in items:
+            if item.directory:
+                print(f"Opening file browser in {item.directory}")
+                cmd = get_command_base('xdg-open')
+                runner = cmd[item.directory]
+                with suppress(pb.ProcessExecutionError):
+                    runner.run_bg()
+            else:
+                jobs_without_dir.append(item)
+
+        if len(jobs_without_dir) > 0:
+            names_ul = '\n -'.join(job.name for job in jobs_without_dir)
+            raise GhaoRuntimeError(f"There is no assigned directory to:\n{names_ul}")
 
 
 def describe_jobs(names: List[str]):
@@ -78,7 +97,9 @@ def describe_jobs(names: List[str]):
 
 def yank_jobs(names: List[str]):
     # joined_names = " ".join(names)
-    log.warning("Yank jobs not implemented yet!")
+    msg = "Yank jobs not implemented yet!"
+    log.warning(msg)
+    raise GhaoRuntimeError(msg)
 
 
 def kill_jobs(names: List[str]):

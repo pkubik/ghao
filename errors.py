@@ -1,0 +1,3 @@
+
+class GhaoRuntimeError(RuntimeError):
+    pass

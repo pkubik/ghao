@@ -52,6 +52,7 @@ class JobsView(Gtk.Bin):
         job_filter.refresh_fns.append(self.update)
 
         self.tree_view = Gtk.TreeView(model=Gtk.TreeModelSort(model=self.store_filter))
+        self.tree_view.get_selection().set_mode(Gtk.SelectionMode.MULTIPLE)
         for i, column_title in enumerate(["Priority", "Name", "State", "Node"]):
             renderer = Gtk.CellRendererText(single_paragraph_mode=True,
                                             ellipsize=Pango.EllipsizeMode.START,
@@ -96,14 +97,22 @@ class JobsView(Gtk.Bin):
             self.tree_view.get_selection().select_path(0)
 
     def add_right_click_handler(self, fn):
-        def handler(_view, event):
+        def button_press_handler(_view, event):
+            # Unselect right-clicked row so it is selected again by the parent code
+            # (to prevent unselecting by the parent code)
+            if event.type == Gdk.EventType.BUTTON_PRESS and event.button == 3:
+                path = self.tree_view.get_path_at_pos(event.x, event.y)[0]
+                self.tree_view.get_selection().unselect_path(path)
+
+        def button_release_handler(_view, event):
             if event.type == Gdk.EventType.BUTTON_RELEASE and event.button == 3:
                 click_location = Gdk.Rectangle()
                 click_location.x = event.x
                 click_location.y = event.y + 24  # need some offset because the coordinates are shifted, dunno
                 fn(click_location)
 
-        self.tree_view.connect('button-release-event', handler)
+        self.tree_view.connect('button-press-event', button_press_handler)
+        self.tree_view.connect('button-release-event', button_release_handler)
 
     def selected_jobs(self) -> List[Job]:
         selection = self.tree_view.get_selection()

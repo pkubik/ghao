@@ -90,9 +90,10 @@ def describe_jobs(names: List[str]):
         os.chmod(file, S_IREAD | S_IRGRP | S_IROTH)
         files.append(file)
 
-    editor = get_command_base("xdg-open").__getitem__(*files)
-    with suppress(pb.ProcessExecutionError):
-        editor.run_bg()
+    for file in files:
+        editor = get_command_base("xdg-open")[file]
+        with suppress(pb.ProcessExecutionError):
+            editor.run_bg()
 
 
 def yank_jobs(names: List[str]):

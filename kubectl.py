@@ -14,7 +14,7 @@ from errors import GhaoRuntimeError
 from jobs_view import JobsView
 from nihao.k8s import K8s
 
-from gi.repository import GLib, Gio
+from gi.repository import GLib, Gio, Gtk, Gdk
 
 from utils import action_handler
 
@@ -63,7 +63,7 @@ class KubeCtl:
 
         for item in items:
             if item.directory:
-                print(f"Opening file browser in {item.directory}")
+                log.info(f"Opening file browser in {item.directory}")
                 cmd = get_command_base('xdg-open')
                 runner = cmd[item.directory]
                 with suppress(pb.ProcessExecutionError):
@@ -74,6 +74,25 @@ class KubeCtl:
         if len(jobs_without_dir) > 0:
             names_ul = '\n -'.join(job.name for job in jobs_without_dir)
             raise GhaoRuntimeError(f"There is no assigned directory to:\n{names_ul}")
+
+    def yank_job_path(self, names: List[str]):
+        if len(names) == 0:
+            raise GhaoRuntimeError("Failed to copy job path - no job selected!")
+        elif len(names) > 1:
+            raise GhaoRuntimeError("Failed to copy job path - more than 1 job selected!")
+        else:
+            name = names[0]
+            items = [item for item in self._jobs_cache if item.name == name]
+            if len(items) == 0:
+                raise GhaoRuntimeError("Failed to copy job path - job no longer exists!")
+            item = items[0]
+
+            if item.directory is None:
+                raise GhaoRuntimeError(f"Failed to copy job path - no directory assigned to `{name}`!")
+
+            clipboard = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
+            clipboard.set_text(item.directory, -1)
+
 
 
 def describe_jobs(names: List[str]):
@@ -94,13 +113,6 @@ def describe_jobs(names: List[str]):
         editor = get_command_base("xdg-open")[file]
         with suppress(pb.ProcessExecutionError):
             editor.run_bg()
-
-
-def yank_jobs(names: List[str]):
-    # joined_names = " ".join(names)
-    msg = "Yank jobs not implemented yet!"
-    log.warning(msg)
-    raise GhaoRuntimeError(msg)
 
 
 def kill_jobs(names: List[str]):

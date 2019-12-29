@@ -9,7 +9,7 @@ from utils import action_handler, threaded_action_handler
 import logging
 import os
 
-from kubectl import KubeCtl, describe_jobs, yank_jobs, kill_jobs
+from kubectl import KubeCtl, describe_jobs, kill_jobs
 
 from headerbar import HeaderBar
 
@@ -99,7 +99,7 @@ def create_window():
         action_group.add_action(action)
 
     add_simple_jobs_action('describe', describe_jobs)
-    add_simple_jobs_action('yank', yank_jobs)
+    add_simple_jobs_action('yank', kubectl.yank_job_path)
     add_simple_jobs_action('open', kubectl.open_file_browsers)
     add_simple_jobs_action('kill', kill_jobs)
 

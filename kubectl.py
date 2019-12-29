@@ -63,6 +63,9 @@ class KubeCtl:
 
         for item in items:
             if item.directory:
+                if not Path(item.directory).exists():
+                    raise GhaoRuntimeError(f"Job directory not accessible! Are network drives mounted?")
+
                 log.info(f"Opening file browser in {item.directory}")
                 cmd = get_command_base('xdg-open')
                 runner = cmd[item.directory]
@@ -92,7 +95,6 @@ class KubeCtl:
 
             clipboard = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
             clipboard.set_text(item.directory, -1)
-
 
 
 def describe_jobs(names: List[str]):

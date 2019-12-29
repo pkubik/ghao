@@ -77,7 +77,7 @@ def create_window():
     def add_simple_jobs_action(name, actual_fn):
         def error_box(markup: str):
             dialog = Gtk.MessageDialog(parent=window,
-                                       message_type=Gtk.MessageType.INFO,
+                                       message_type=Gtk.MessageType.WARNING,
                                        buttons=Gtk.ButtonsType.OK)
             dialog.set_markup("<b>Action Error</b>")
             dialog.format_secondary_markup(markup)

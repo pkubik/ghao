@@ -34,7 +34,7 @@ def get_command_base(name: str):
 
 class KubeCtl:
     def __init__(self):
-        self.k8s = K8s()
+        self.k8s = K8s(gather_pods_by_job=False)
         self._jobs_cache = []  # Used to run job specific commands by job name
 
     def update_jobs_view(self, jobs_view: JobsView):
@@ -52,7 +52,7 @@ class KubeCtl:
                 time.sleep(8.)
 
         update_jobs_action = Gio.SimpleAction.new("update", None)
-        update_jobs_action.connect("activate", action_handler(self.update_jobs_view))
+        update_jobs_action.connect("activate", action_handler(lambda: self.update_jobs_view(jobs_view)))
 
         action_group.add_action(update_jobs_action)
         threading.Thread(target=update_jobs_periodic_task, daemon=True).start()

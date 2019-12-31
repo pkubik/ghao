@@ -56,7 +56,7 @@ def create_window():
     action_group = Gio.SimpleActionGroup()
     window.insert_action_group("jobs", action_group)
 
-    window.set_default_size(640, 640)
+    window.set_default_size(780, 640)
     window.set_position(Gtk.WindowPosition.CENTER)
 
     header = HeaderBar(title, username)

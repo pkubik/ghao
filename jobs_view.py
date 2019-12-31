@@ -35,18 +35,26 @@ class JobFilter:
         self.visible_fns.append(fn)
 
 
+def children_generator(store: Gtk.TreeStore, parent_iter: Gtk.TreeIter):
+    child_iter = store.iter_children(parent_iter)
+    while child_iter is not None:
+        next_iter = store.iter_next(child_iter)  # get next iterator before yield to protect against item removal
+        yield child_iter
+        child_iter = next_iter
+
+
 class JobsView(Gtk.Bin):
     def __init__(self, job_filter: JobFilter):
         super().__init__()
         self.filters = []
 
-        self.list_store = Gtk.ListStore(str, str, str, str)
+        self.tree_store = Gtk.TreeStore(str, str, str, str)
 
         def is_job_visible(model, iter, _):
             job = Job(*model[iter])
             return job_filter.is_visible(job)
 
-        self.store_filter = self.list_store.filter_new()
+        self.store_filter = self.tree_store.filter_new()
         self.store_filter.set_visible_func(is_job_visible)
 
         job_filter.refresh_fns.append(self.update)
@@ -59,9 +67,11 @@ class JobsView(Gtk.Bin):
                                             family='Monospace')
             column = Gtk.TreeViewColumn(column_title, renderer, text=i)
             column.set_sort_column_id(i)
-            if i == 1:
+            if i == 0:
+                column.set_min_width(110)
+            elif i == 1:
                 column.set_expand(True)
-                column.set_min_width(320)
+                column.set_min_width(300)
             else:
                 column.set_min_width(80)
             self.tree_view.append_column(column)
@@ -79,22 +89,37 @@ class JobsView(Gtk.Bin):
             log.info("Updating jobs list...")
             jobs_dict = {j.name: j for j in jobs_list}
 
-            for it in self.list_store:
+            for it in self.tree_store:
                 job = jobs_dict.pop(it[1], None)
                 if job is None:
-                    self.list_store.remove(it.iter)
+                    self.tree_store.remove(it.iter)
                 else:
-                    self.list_store[it.iter] = [job.priority, job.name, job.phase, job.node]
+                    self.tree_store[it.iter] = [job.priority, job.name, job.phase, job.node]
+                    pods_dict = {p.name: p for p in job.pods}
+                    for child_iter in children_generator(self.tree_store, it.iter):
+                        pod_name = self.tree_store[child_iter][1]
+                        pod = pods_dict.pop(pod_name, None)
+                        if pod is None:
+                            self.tree_store.remove(child_iter)
+                        else:
+                            self.tree_store[child_iter] = [pod.priority, pod.name, pod.phase, pod.node]
+
+                    for pod in pods_dict.values():
+                        self.tree_store.append(it.iter, [pod.priority, pod.name, pod.phase, pod.node])
 
             for job in jobs_dict.values():
-                self.list_store.append([job.priority, job.name, job.phase, job.node])
+                piter = self.tree_store.append(None, [job.priority, job.name, job.phase, job.node])
+                for pod in job.pods:
+                    self.tree_store.append(piter, [pod.priority, pod.name, pod.phase, pod.node])
         else:
             log.info("Refreshing jobs list...")
 
         self.store_filter.refilter()
 
-        if len(self.list_store) > 0 and self.tree_view.get_selection().count_selected_rows() == 0:
-            self.tree_view.get_selection().select_path(0)
+        if len(self.tree_store) > 0:
+            selection = self.tree_view.get_selection()
+            if selection.count_selected_rows() == 0:
+                selection.select_path(0)
 
     def add_right_click_handler(self, fn):
         def button_press_handler(_view, event):

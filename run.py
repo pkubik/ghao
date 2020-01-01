@@ -9,8 +9,6 @@ from utils import action_handler, threaded_action_handler
 import logging
 import os
 
-from kubectl import KubeCtl, describe_jobs, kill_jobs
-
 from headerbar import HeaderBar
 
 from gi.repository import Gio, Gtk, GLib
@@ -48,6 +46,8 @@ MENU_XML = """
 
 
 def create_window():
+    from kubectl import KubeCtl
+
     username = 'maciek'
     kubectl = KubeCtl()
 
@@ -98,10 +98,10 @@ def create_window():
         action.connect("activate", threaded_action_handler(fn))
         action_group.add_action(action)
 
-    add_simple_jobs_action('describe', describe_jobs)
+    add_simple_jobs_action('describe', kubectl.describe_jobs)
     add_simple_jobs_action('yank', kubectl.yank_job_path)
     add_simple_jobs_action('open', kubectl.open_file_browsers)
-    add_simple_jobs_action('kill', kill_jobs)
+    add_simple_jobs_action('kill', kubectl.kill_jobs)
 
     window.show_all()
 

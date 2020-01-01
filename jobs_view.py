@@ -61,6 +61,9 @@ class JobsView(Gtk.Bin):
 
         self.tree_view = Gtk.TreeView(model=Gtk.TreeModelSort(model=self.store_filter))
         self.tree_view.get_selection().set_mode(Gtk.SelectionMode.MULTIPLE)
+        self.tree_view.set_property("enable-grid-lines", True)
+        self.tree_view.set_property("enable-tree-lines", True)
+        self.tree_view.set_property("enable-search", False)
         for i, column_title in enumerate(["Priority", "Name", "State", "Node"]):
             renderer = Gtk.CellRendererText(single_paragraph_mode=True,
                                             ellipsize=Pango.EllipsizeMode.START,

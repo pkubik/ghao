@@ -6,7 +6,7 @@ import threading
 from contextlib import suppress
 from pathlib import Path
 from stat import S_IREAD, S_IRGRP, S_IROTH
-from typing import List
+from typing import List, Callable
 
 import plumbum as pb
 
@@ -32,9 +32,22 @@ def get_command_base(name: str):
         raise GhaoRuntimeError(f"Command `{name}` not found.")
 
 
+class KubeCmd:
+    def __init__(self):
+        self.cmd = get_command_base('kubectl')
+
+    def describe_cmd(self, name: str, filename: str) -> Callable:
+        return self.cmd["describe", "job", name] > filename
+
+    def kill_cmd(self, name: str) -> Callable:
+        kubectl = get_command_base('kubectl')
+        return kubectl["delete", "job", name]
+
+
 class KubeCtl:
     def __init__(self):
         self.k8s = K8s(gather_pods_by_job=False)
+        self.kubecmd = KubeCmd()
         self._jobs_cache = []  # Used to run job specific commands by job name
 
     def update_jobs_view(self, jobs_view: JobsView):
@@ -93,33 +106,34 @@ class KubeCtl:
             if item.directory is None:
                 raise GhaoRuntimeError(f"Failed to copy job path - no directory assigned to `{name}`!")
 
-            clipboard = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
-            clipboard.set_text(item.directory, -1)
+            directory = item.directory
 
+            def fn():
+                clipboard = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
+                clipboard.set_text(directory, -1)
 
-def describe_jobs(names: List[str]):
-    if len(names) == 0:
-        return
-    temp_dir = Path(tempfile.mkdtemp(prefix='nihao'))
-    files = []
-    for name in names:
-        file = str(temp_dir / name) + '.txt'
-        kubectl = get_command_base('kubectl')
-        bash_runner = kubectl["describe", "job", name] > file
-        with suppress(pb.ProcessExecutionError):
-            bash_runner()
-        os.chmod(file, S_IREAD | S_IRGRP | S_IROTH)
-        files.append(file)
+            GLib.idle_add(fn)
 
-    for file in files:
-        editor = get_command_base("xdg-open")[file]
-        with suppress(pb.ProcessExecutionError):
-            editor.run_bg()
+    def describe_jobs(self, names: List[str]):
+        if len(names) == 0:
+            return
+        temp_dir = Path(tempfile.mkdtemp(prefix='nihao'))
+        files = []
+        for name in names:
+            file = str(temp_dir / name) + '.txt'
+            cmd = self.kubecmd.describe_cmd(name, file)
+            with suppress(pb.ProcessExecutionError):
+                cmd()
+            os.chmod(file, S_IREAD | S_IRGRP | S_IROTH)
+            files.append(file)
 
+        for file in files:
+            editor = get_command_base("xdg-open")[file]
+            with suppress(pb.ProcessExecutionError):
+                editor.run_bg()
 
-def kill_jobs(names: List[str]):
-    for name in names:
-        kubectl = get_command_base('kubectl')
-        bash_runner = kubectl["delete", "job", name]
-        with suppress(pb.ProcessExecutionError):
-            bash_runner.run_tee()
+    def kill_jobs(self, names: List[str]):
+        for name in names:
+            cmd = self.kubecmd.kill_cmd(name)
+            with suppress(pb.ProcessExecutionError):
+                cmd()

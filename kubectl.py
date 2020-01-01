@@ -12,7 +12,6 @@ import plumbum as pb
 
 from errors import GhaoRuntimeError
 from jobs_view import JobsView
-from nihao.k8s import K8s
 
 from gi.repository import GLib, Gio, Gtk, Gdk
 
@@ -32,27 +31,30 @@ def get_command_base(name: str):
         raise GhaoRuntimeError(f"Command `{name}` not found.")
 
 
-class KubeCmd:
+class KubeCtl:
     def __init__(self):
+        from nihao.k8s import K8s
+        self.k8s = K8s(gather_pods_by_job=False)
         self.cmd = get_command_base('kubectl')
+
+    def jobs(self):
+        return self.k8s.get_jobs_info(jobdir=True)
 
     def describe_cmd(self, name: str, filename: str) -> Callable:
         return self.cmd["describe", "job", name] > filename
 
     def kill_cmd(self, name: str) -> Callable:
-        kubectl = get_command_base('kubectl')
-        return kubectl["delete", "job", name]
+        return self.cmd["delete", "job", name]
 
 
-class KubeCtl:
+class JobCtl:
     def __init__(self):
-        self.k8s = K8s(gather_pods_by_job=False)
-        self.kubecmd = KubeCmd()
+        self.kubectl = KubeCtl()
         self._jobs_cache = []  # Used to run job specific commands by job name
 
     def update_jobs_view(self, jobs_view: JobsView):
         def fn():
-            self._jobs_cache = self.k8s.get_jobs_info(jobdir=True)
+            self._jobs_cache = self.kubectl.jobs()
             GLib.idle_add(lambda: jobs_view.update(self._jobs_cache))
 
         threading.Thread(target=fn, daemon=True).start()
@@ -60,7 +62,7 @@ class KubeCtl:
     def setup_update_actions(self, jobs_view: JobsView, action_group: Gio.SimpleActionGroup):
         def update_jobs_periodic_task():
             while True:
-                self._jobs_cache = self.k8s.get_jobs_info(jobdir=True)
+                self._jobs_cache = self.kubectl.jobs()
                 GLib.idle_add(lambda: jobs_view.update(self._jobs_cache))
                 time.sleep(8.)
 
@@ -121,7 +123,7 @@ class KubeCtl:
         files = []
         for name in names:
             file = str(temp_dir / name) + '.txt'
-            cmd = self.kubecmd.describe_cmd(name, file)
+            cmd = self.kubectl.describe_cmd(name, file)
             with suppress(pb.ProcessExecutionError):
                 cmd()
             os.chmod(file, S_IREAD | S_IRGRP | S_IROTH)
@@ -134,6 +136,6 @@ class KubeCtl:
 
     def kill_jobs(self, names: List[str]):
         for name in names:
-            cmd = self.kubecmd.kill_cmd(name)
+            cmd = self.kubectl.kill_cmd(name)
             with suppress(pb.ProcessExecutionError):
                 cmd()

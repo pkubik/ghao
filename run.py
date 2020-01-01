@@ -46,10 +46,10 @@ MENU_XML = """
 
 
 def create_window():
-    from kubectl import KubeCtl
+    from kubectl import JobCtl
 
     username = 'maciek'
-    kubectl = KubeCtl()
+    jobctl = JobCtl()
 
     title = "Nihao | 你好"
     window = Gtk.ApplicationWindow(title=title)
@@ -66,7 +66,7 @@ def create_window():
     jobs_view = JobsView(header.job_filter)
     window.add(jobs_view)
     jobs_view.grab_focus()
-    kubectl.setup_update_actions(jobs_view, action_group)
+    jobctl.setup_update_actions(jobs_view, action_group)
 
     focus_jobs_action = Gio.SimpleAction.new("focus", None)
     focus_jobs_action.connect("activate", action_handler(jobs_view.grab_focus))
@@ -92,16 +92,16 @@ def create_window():
             except GhaoRuntimeError as e:
                 GLib.idle_add(error_box, str(e))
 
-            kubectl.update_jobs_view(jobs_view)
+            jobctl.update_jobs_view(jobs_view)
 
         action = Gio.SimpleAction.new(name, None)
         action.connect("activate", threaded_action_handler(fn))
         action_group.add_action(action)
 
-    add_simple_jobs_action('describe', kubectl.describe_jobs)
-    add_simple_jobs_action('yank', kubectl.yank_job_path)
-    add_simple_jobs_action('open', kubectl.open_file_browsers)
-    add_simple_jobs_action('kill', kubectl.kill_jobs)
+    add_simple_jobs_action('describe', jobctl.describe_jobs)
+    add_simple_jobs_action('yank', jobctl.yank_job_path)
+    add_simple_jobs_action('open', jobctl.open_file_browsers)
+    add_simple_jobs_action('kill', jobctl.kill_jobs)
 
     window.show_all()
 

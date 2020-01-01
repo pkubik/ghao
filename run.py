@@ -45,11 +45,14 @@ MENU_XML = """
 """
 
 
+FAKE_KUBERNETES = True
+
+
 def create_window():
     from kubectl import JobCtl
 
-    username = 'maciek'
-    jobctl = JobCtl()
+    username = os.environ.get('USER', '')
+    jobctl = JobCtl(fake=FAKE_KUBERNETES)
 
     title = "Nihao | 你好"
     window = Gtk.ApplicationWindow(title=title)

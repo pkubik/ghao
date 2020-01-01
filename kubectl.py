@@ -15,20 +15,9 @@ from jobs_view import JobsView
 
 from gi.repository import GLib, Gio, Gtk, Gdk
 
-from utils import action_handler
-
+from utils import action_handler, get_command_base
 
 log = logging.getLogger(__name__)
-
-
-def get_command_base(name: str):
-    try:
-        cmd = pb.local[name]
-        return cmd
-    except pb.CommandNotFound as e:
-        log.error(f"{e.program} was not found.\n"
-                  "Make sure that it's installed before using this tool.")
-        raise GhaoRuntimeError(f"Command `{name}` not found.")
 
 
 class KubeCtl:
@@ -37,7 +26,7 @@ class KubeCtl:
         self.k8s = K8s(gather_pods_by_job=False)
         self.cmd = get_command_base('kubectl')
 
-    def jobs(self):
+    def get_jobs(self):
         return self.k8s.get_jobs_info(jobdir=True)
 
     def describe_cmd(self, name: str, filename: str) -> Callable:
@@ -48,13 +37,17 @@ class KubeCtl:
 
 
 class JobCtl:
-    def __init__(self):
-        self.kubectl = KubeCtl()
+    def __init__(self, fake=False):
+        if fake:
+            from fakectl import FakeKubeCtl
+            self.kubectl = FakeKubeCtl()
+        else:
+            self.kubectl = KubeCtl()
         self._jobs_cache = []  # Used to run job specific commands by job name
 
     def update_jobs_view(self, jobs_view: JobsView):
         def fn():
-            self._jobs_cache = self.kubectl.jobs()
+            self._jobs_cache = self.kubectl.get_jobs()
             GLib.idle_add(lambda: jobs_view.update(self._jobs_cache))
 
         threading.Thread(target=fn, daemon=True).start()
@@ -62,7 +55,7 @@ class JobCtl:
     def setup_update_actions(self, jobs_view: JobsView, action_group: Gio.SimpleActionGroup):
         def update_jobs_periodic_task():
             while True:
-                self._jobs_cache = self.kubectl.jobs()
+                self._jobs_cache = self.kubectl.get_jobs()
                 GLib.idle_add(lambda: jobs_view.update(self._jobs_cache))
                 time.sleep(8.)
 

@@ -6,8 +6,6 @@ from typing import Callable, List
 from gi.repository import Gtk, Gdk, Pango
 import logging
 
-from nihao import k8s
-
 log = logging.getLogger(__name__)
 
 
@@ -87,7 +85,7 @@ class JobsView(Gtk.Bin):
     def grab_focus(self):
         self.tree_view.grab_focus()
 
-    def update(self, jobs_list: List[k8s.Job] = None):
+    def update(self, jobs_list: List = None):
         if jobs_list is not None:
             log.info("Updating jobs list...")
             jobs_dict = {j.name: j for j in jobs_list}

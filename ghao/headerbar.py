@@ -1,7 +1,7 @@
 from gi.repository import Gtk, Gio
 
-from jobs_view import JobFilter
-from utils import action_handler
+from ghao.jobs_view import JobFilter
+from ghao.utils import action_handler
 
 
 def create_user_filter_checkbox(username: str, job_filter: JobFilter) -> Gtk.CheckButton:

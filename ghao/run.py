@@ -1,18 +1,18 @@
 import gi
 
-from errors import GhaoRuntimeError
+from ghao.errors import GhaoRuntimeError
 
 gi.require_version('Gtk', '3.0')
 
-from utils import action_handler, threaded_action_handler
+from ghao.utils import action_handler, threaded_action_handler
 
 import logging
 import os
 
-from headerbar import HeaderBar
+from ghao.headerbar import HeaderBar
 
 from gi.repository import Gio, Gtk, GLib
-from jobs_view import JobsView
+from ghao.jobs_view import JobsView
 
 logging.basicConfig(level=os.environ.get("NIHAO_LOGLEVEL", "INFO"))
 log = logging.getLogger(__name__)
@@ -49,9 +49,13 @@ FAKE_KUBERNETES = True
 
 
 def create_window():
-    from kubectl import JobCtl
+    from ghao.kubectl import JobCtl
 
-    username = os.environ.get('USER', '')
+    if FAKE_KUBERNETES:
+        username = 'pkubik'
+    else:
+        username = os.environ.get('USER', '')
+
     jobctl = JobCtl(fake=FAKE_KUBERNETES)
 
     title = "Nihao | 你好"

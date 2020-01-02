@@ -2,7 +2,7 @@ import logging
 import threading
 import plumbum as pb
 
-from errors import GhaoRuntimeError
+from ghao.errors import GhaoRuntimeError
 
 log = logging.getLogger(__name__)
 

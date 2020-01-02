@@ -10,12 +10,12 @@ from typing import List, Callable
 
 import plumbum as pb
 
-from errors import GhaoRuntimeError
-from jobs_view import JobsView
+from ghao.errors import GhaoRuntimeError
+from ghao.jobs_view import JobsView
 
 from gi.repository import GLib, Gio, Gtk, Gdk
 
-from utils import action_handler, get_command_base
+from ghao.utils import action_handler, get_command_base
 
 log = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ class KubeCtl:
 class JobCtl:
     def __init__(self, fake=False):
         if fake:
-            from fakectl import FakeKubeCtl
+            from ghao.fakectl import FakeKubeCtl
             self.kubectl = FakeKubeCtl()
         else:
             self.kubectl = KubeCtl()
